@@ -63,6 +63,7 @@
               overlay
             ]
           );
+        mkApplication = pkgs: (pkgs.callPackages pyproject-nix.build.util { }).mkApplication;
       in
       {
         inherit inputs;
@@ -75,14 +76,17 @@
 
         package =
           { pkgs, ... }:
-          ((pythonSet pkgs).mkVirtualEnv "red" workspace.deps.default).overrideAttrs (old: {
-            passthru = lib.recursiveUpdate (old.passthru or { }) {
-              inherit (pythonSet.testing.passthru) tests;
-            };
-            meta = (old.meta or { }) // {
-              mainProgram = "red";
-            };
-          });
+          mkApplication pkgs {
+            venv = ((pythonSet pkgs).mkVirtualEnv "red" workspace.deps.default).overrideAttrs (old: {
+              passthru = lib.recursiveUpdate (old.passthru or { }) {
+                inherit (pythonSet.testing.passthru) tests;
+              };
+              meta = (old.meta or { }) // {
+                mainProgram = "red";
+              };
+            });
+            package = (pythonSet pkgs).red-reddit-cli;
+          };
 
         app = pkgs: {
           type = "app";
