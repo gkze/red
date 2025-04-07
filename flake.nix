@@ -68,6 +68,7 @@
       {
         inherit inputs;
         systems = [
+          "aarch64-apple-darwin"
           "aarch64-darwin"
           "x86_64-linux"
         ];
@@ -76,8 +77,11 @@
 
         package =
           { pkgs, ... }:
+          let
+            pySet = pythonSet pkgs;
+          in
           mkApplication pkgs {
-            venv = ((pythonSet pkgs).mkVirtualEnv "red" workspace.deps.default).overrideAttrs (old: {
+            venv = (pySet.mkVirtualEnv "red" workspace.deps.default).overrideAttrs (old: {
               passthru = lib.recursiveUpdate (old.passthru or { }) {
                 inherit (pythonSet.testing.passthru) tests;
               };
@@ -85,7 +89,7 @@
                 mainProgram = "red";
               };
             });
-            package = (pythonSet pkgs).red-reddit-cli;
+            package = pySet.red-reddit-cli;
           };
 
         app = pkgs: {
