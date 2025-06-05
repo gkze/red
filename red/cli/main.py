@@ -16,7 +16,7 @@ from click import Command
 from click.core import Context
 from praw import Reddit
 from rich.console import Console
-from rich.table import Table
+from rich.table import Column, Table
 from typer import Option, Typer
 from typer.core import TyperGroup
 
@@ -49,6 +49,7 @@ class AliasGroup(TyperGroup):
             name = cmd.name
             if name and default_name in self._CMD_SPLIT_P.split(name):
                 return name
+
         return default_name
 
 
@@ -63,7 +64,17 @@ def aliases(names: list[str]) -> str:
     return " | ".join(names)
 
 
-root = Typer(cls=AliasGroup, context_settings=CTX_SETTINGS, no_args_is_help=True)
+root = Typer(
+    name="red",
+    cls=AliasGroup,
+    context_settings=CTX_SETTINGS,
+    no_args_is_help=True,
+    help="""
+    Red - a Reddit CLI
+
+    Not a fully-fledged API CLI, rather a convenience helper for organizing
+    """,
+)
 client = Reddit()
 console = Console()
 
@@ -78,10 +89,11 @@ class SubSortKey(StrEnum):
 
 
 subs = Typer(
+    name="subs",
     cls=AliasGroup,
     context_settings=CTX_SETTINGS,
     no_args_is_help=True,
-    help="Manage subreddits.",
+    help="Manage subreddits. CRUD for now",
 )
 
 
@@ -90,12 +102,9 @@ def list_subs(
     sort: Annotated[SubSortKey, Option("-s", "--sort")] = SubSortKey.url,
 ) -> None:
     """List all subscribed subreddits."""
-    table = Table()
-    table.add_column("url")
-    table.add_column("display_name")
-    table.add_column("title")
-    table.add_column("subscribers")
-    table.add_column("feed")
+    table = Table(
+        *(Column(n) for n in ["url", "display_name", "title", "subscribers", "feed"])
+    )
 
     multis = client.user.multireddits()
     sub_to_multi: dict[Subreddit, set[Multireddit]] = defaultdict(set)
@@ -140,10 +149,16 @@ def unsubscribe(sub_names: list[str]) -> None:
         console.print(f"Unsubscribed from r/{sub_name}")
 
 
-root.add_typer(subs, name="subs")
+root.add_typer(subs, name=subs.info.name, help="Subreddit commands")
 
 
-multis = Typer(context_settings=CTX_SETTINGS, no_args_is_help=True)
+multis = Typer(
+    name="multis",
+    cls=AliasGroup,
+    context_settings=CTX_SETTINGS,
+    no_args_is_help=True,
+    help="Manage custom feeds (multireddits).",
+)
 
 
 class MultiRedditSortKey(StrEnum):
@@ -153,17 +168,16 @@ class MultiRedditSortKey(StrEnum):
     sub_count = "sub_count"
 
 
-@multis.command("list")
+@multis.command(aliases(["list", "ls", "l"]))
 def list_multis(
     sort: Annotated[
         MultiRedditSortKey,
         Option("-s", "--sort"),
     ] = MultiRedditSortKey.name,  # type: ignore[arg-type]
+    reverse: Annotated[bool, Option("-r", "--reverse", "Reverse sort")] = False,
 ) -> None:
     """List all multireddits (custom feeds)."""
-    table = Table()
-    table.add_column("name")
-    table.add_column("sub_count")
+    table = Table(*(Column(n) for n in ["name", "sub_count"]))
 
     for multi in sorted(
         client.user.multireddits(),
@@ -172,7 +186,7 @@ def list_multis(
             if sort != MultiRedditSortKey.sub_count
             else len(m.subreddits)
         ),
-        reverse=sort == MultiRedditSortKey.sub_count,
+        reverse=reverse,
     ):
         m = cast("Multireddit", multi)
         table.add_row(m.name, str(len(m.subreddits)))
@@ -194,7 +208,7 @@ def suburl_to_name(u: str) -> str:
     return u.split("/")[2]
 
 
-@multis.command()
+@multis.command(aliases(["genconf", "gen", "g"]))
 def genconf(out: Annotated[Path, Option("-o", "--output")] = RED_CFG) -> None:
     """Generate multisub config."""
     conf: dict[str, list[str]] = {}
@@ -218,10 +232,10 @@ class NoAuthenticatedUserError(RuntimeError):
 
     def __init__(self, *_: object) -> None:
         """Raise with simple message."""
-        super().__init__("coult not determine authenticated user")
+        super().__init__("could not determine authenticated user")
 
 
-@multis.command()
+@multis.command(aliases(["apply", "app", "a"]))
 def apply(infile: Annotated[Path, Option("-i", "--input")] = RED_CFG) -> None:
     """
     Apply multisub config.
@@ -263,6 +277,8 @@ def apply(infile: Annotated[Path, Option("-i", "--input")] = RED_CFG) -> None:
     # Add what's in config but not on remote
     added = set()
     for to_create_multi in local_multis - remote_multis:
+        if not cfg[to_create_multi]:
+            console.print(f"{to_create_multi} has no subs under it - skipping")
         console.print(
             f"{to_create_multi} does not exist yet - creating and adding subs",
         )
@@ -308,7 +324,9 @@ def apply(infile: Annotated[Path, Option("-i", "--input")] = RED_CFG) -> None:
     console.print(f"updated multireddits: {updated.items()}")
 
 
-root.add_typer(multis, name="multis", help="Manage multireddits (custom feeds).")
+root.add_typer(
+    multis, name=multis.info.name, help="Manage multireddits (custom feeds)."
+)
 
 
 def main() -> None:
