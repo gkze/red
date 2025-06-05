@@ -174,7 +174,7 @@ def list_multis(
         MultiRedditSortKey,
         Option("-s", "--sort"),
     ] = MultiRedditSortKey.name,  # type: ignore[arg-type]
-    reverse: Annotated[bool, Option("-r", "--reverse", "Reverse sort")] = False,
+    reverse: Annotated[bool, Option("-r", "--reverse", "Reverse sort")] = False,  # noqa: FBT002
 ) -> None:
     """List all multireddits (custom feeds)."""
     table = Table(*(Column(n) for n in ["name", "sub_count"]))
