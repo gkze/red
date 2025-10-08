@@ -68,6 +68,7 @@ root = Typer(
     name="red",
     cls=AliasGroup,
     context_settings=CTX_SETTINGS,
+    invoke_without_command=True,
     no_args_is_help=True,
     help="""
     Red - a Reddit CLI
@@ -75,6 +76,7 @@ root = Typer(
     Not a fully-fledged API CLI, rather a convenience helper for organizing
     """,
 )
+
 client = Reddit()
 console = Console()
 
