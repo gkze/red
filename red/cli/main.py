@@ -3,6 +3,7 @@
 
 """red CLI core."""
 
+import importlib.metadata
 import re
 import sys
 from collections import defaultdict
@@ -10,6 +11,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
+import typer
 import xdg_base_dirs
 import yaml
 from click import Command
@@ -68,6 +70,7 @@ root = Typer(
     name="red",
     cls=AliasGroup,
     context_settings=CTX_SETTINGS,
+    invoke_without_command=True,
     no_args_is_help=True,
     help="""
     Red - a Reddit CLI
@@ -75,6 +78,24 @@ root = Typer(
     Not a fully-fledged API CLI, rather a convenience helper for organizing
     """,
 )
+
+
+@root.callback()
+def callback(
+    ctx: typer.Context,
+    version: Annotated[
+        bool | None, Option("-v", "--version", is_flag=True, help="Version")
+    ] = None,
+) -> None:
+    """Execute callback at the start of every invocation."""
+    if not version:
+        typer.echo(importlib.metadata.version(cast("str", __package__).split(".")[0]))
+        return
+
+    if not ctx.invoked_subcommand:
+        return
+
+
 client = Reddit()
 console = Console()
 
