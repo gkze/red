@@ -42,7 +42,6 @@
       self,
       devshell,
       flakelight,
-      nixpkgs,
       pre-commit,
       treefmt-nix,
       uv2nix,
